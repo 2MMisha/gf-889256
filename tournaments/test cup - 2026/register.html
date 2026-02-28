@@ -141,56 +141,70 @@
         const messageDiv = document.getElementById('message');
         const loadingDiv = document.getElementById('loading');
         const submitBtn = document.getElementById('submitBtn');
-        
-        // Получаем название турнира из URL
+
+        // Функция для декодирования %20 в пробелы
+        function decodeTournamentName(str) {
+            if (!str) return 'Unknown Tournament';
+            try {
+                // Декодируем URL-кодировку
+                str = decodeURIComponent(str);
+                // Заменяем дефисы на пробелы и делаем заглавными
+                str = str.replace(/-/g, ' ');
+                // Делаем первую букву каждого слова заглавной
+                str = str.replace(/\b\w/g, l => l.toUpperCase());
+                return str;
+            } catch (e) {
+                console.warn('Decode error:', e);
+                return str;
+            }
+        }
+
+        // Получаем название турнира из URL и декодируем его
         function getTournamentNameFromPath() {
             const path = window.location.pathname;
             const matches = path.match(/tournaments\/([^\/]+)/);
             if (matches && matches[1]) {
-                return matches[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                return decodeTournamentName(matches[1]);
             }
             return 'Unknown Tournament';
         }
-        
+
+        // Устанавливаем название турнира
         const tournamentName = getTournamentNameFromPath();
         document.getElementById('tournamentName').value = tournamentName;
         document.getElementById('tournament-title').textContent = tournamentName + ' Registration';
-        
-        // ВАЖНО: замените на ваш URL
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbx13TbORJXqP8nYPav_2N_JVrHMbOpVLAloP6Q_F8tqOBSMqOv46SNn2lEOf0AYT8LS/exec';
-        
+
+        // ВАЖНО: замените на ваш URL от Google Apps Script
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbw_JqZ94bC3UeIhQec4-kJj6pWD9T-2pO7e4p3ptvRtyhG1HvBzKNMrjQoPBLk9ntqu/exec';
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             // Показываем загрузку
             loadingDiv.classList.add('show');
             submitBtn.disabled = true;
             messageDiv.style.display = 'none';
-            
-            // Создаем FormData объект
-            // Создаем объект с данными
-const formData = new URLSearchParams();
-formData.append('timestamp', new Date().toISOString());
-formData.append('tournamentName', document.getElementById('tournamentName').value);
-formData.append('teamName', document.getElementById('teamName').value);
-formData.append('captainName', document.getElementById('captainName').value);
-formData.append('email', document.getElementById('email').value);
-formData.append('phone', document.getElementById('phone').value);
-formData.append('participants', document.getElementById('participants').value);
-            
-            // Добавляем временную метку
+
+            // Создаем данные для отправки
+            const formData = new URLSearchParams();
             formData.append('timestamp', new Date().toISOString());
-            
+            formData.append('tournamentName', tournamentName); // Отправляем уже декодированное название
+            formData.append('teamName', document.getElementById('teamName').value);
+            formData.append('captainName', document.getElementById('captainName').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('phone', document.getElementById('phone').value);
+            formData.append('participants', document.getElementById('participants').value);
+
             try {
-                // Отправляем как FormData (не URLSearchParams)
+                // Отправка
                 const response = await fetch(scriptURL, {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: formData.toString() // Важно: используем toString()
-});
-                
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData.toString()
+                });
+
                 // Пытаемся получить ответ
                 let result;
                 try {
@@ -199,7 +213,7 @@ formData.append('participants', document.getElementById('participants').value);
                     console.log('Response is not JSON:', e);
                     result = { result: 'success' };
                 }
-                
+
                 if (result.result === 'success') {
                     messageDiv.className = 'message success';
                     messageDiv.textContent = 'Registration successful! We will contact you soon.';
@@ -208,7 +222,7 @@ formData.append('participants', document.getElementById('participants').value);
                 } else {
                     throw new Error('Server error');
                 }
-                
+
             } catch (error) {
                 console.error('Error:', error);
                 messageDiv.className = 'message error';
