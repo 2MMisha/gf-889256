@@ -5,99 +5,65 @@ async function loadTournaments() {
     try {
         tournamentGrid.innerHTML = '<div class="loading">Loading tournaments...</div>';
         
-        // Пробуем загрузить index.json (созданный GitHub Action)
+        // Сначала проверим что возвращает сервер
         const response = await fetch('tournaments/index.json?' + Date.now());
+        const text = await response.text(); // Получаем как текст, чтобы увидеть что реально приходит
         
-        if (!response.ok) {
-            console.log('index.json not found, checking folders.json...');
-            
-            // Пробуем загрузить folders.json (список папок)
-            const foldersResponse = await fetch('tournaments/folders.json?' + Date.now());
-            
-            if (foldersResponse.ok) {
-                const folders = await foldersResponse.json();
-                console.log('Folders found:', folders);
-                
-                // Загружаем инфо из каждой папки
-                const tournaments = [];
-                for (const folder of folders) {
-                    try {
-                        const infoResponse = await fetch(`tournaments/${folder}/info.json?` + Date.now());
-                        if (infoResponse.ok) {
-                            const info = await infoResponse.json();
-                            tournaments.push({
-                                folder: folder,
-                                name: info.name || folder,
-                                date: info.date || 'TBA',
-                                location: info.location || 'TBA'
-                            });
-                        } else {
-                            // Если info.json нет, используем название папки
-                            tournaments.push({
-                                folder: folder,
-                                name: folder.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-                                date: 'TBA',
-                                location: 'TBA'
-                            });
-                        }
-                    } catch (e) {
-                        console.warn(`Error loading ${folder}:`, e);
-                    }
-                }
-                
-                if (tournaments.length > 0) {
-                    displayTournaments(tournaments);
-                    return;
-                }
-            }
-            
-            // Если ничего не нашли, показываем тестовый турнир
-            console.log('No tournaments found, showing test data');
-            const testTournaments = [
-                {
-                    folder: 'test-tournament',
-                    name: 'Test Tournament',
-                    date: 'July 2024',
-                    location: 'Test Location'
-                }
-            ];
-            displayTournaments(testTournaments);
+        console.log('Raw response:', text);
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+            console.log('Parsed data:', data);
+        } catch (e) {
+            console.error('JSON parse error:', e);
+            tournamentGrid.innerHTML = `<div class="loading">Error: Invalid JSON - ${text.substring(0, 100)}</div>`;
             return;
         }
         
-        // Если index.json существует
-        const data = await response.json();
-        console.log('Index.json loaded:', data);
+        // Преобразуем в массив
+        let tournaments = [];
         
-        const tournaments = Object.entries(data).map(([folder, info]) => ({
-            folder: folder,
-            name: info.name || folder,
-            date: info.date || 'TBA',
-            location: info.location || 'TBA'
-        }));
+        if (Array.isArray(data)) {
+            // Если это массив
+            tournaments = data.map(item => ({
+                folder: item.folder || 'unknown',
+                name: item.name || 'Unknown',
+                date: item.date || 'TBA',
+                location: item.location || 'TBA'
+            }));
+        } else if (typeof data === 'object' && data !== null) {
+            // Если это объект
+            tournaments = Object.entries(data).map(([folder, info]) => ({
+                folder: folder,
+                name: info.name || folder,
+                date: info.date || 'TBA',
+                location: info.location || 'TBA'
+            }));
+        } else {
+            tournamentGrid.innerHTML = `<div class="loading">Error: Unexpected data format - ${typeof data}</div>`;
+            return;
+        }
+        
+        if (tournaments.length === 0) {
+            tournamentGrid.innerHTML = '<div class="loading">No tournaments found in index.json</div>';
+            return;
+        }
         
         displayTournaments(tournaments);
         
     } catch (error) {
         console.error('Error:', error);
-        tournamentGrid.innerHTML = '<div class="loading">Error loading tournaments. Check console.</div>';
+        tournamentGrid.innerHTML = `<div class="loading">Error: ${error.message}</div>`;
     }
 }
 
 function displayTournaments(tournaments) {
     tournamentGrid.innerHTML = '';
     
-    if (tournaments.length === 0) {
-        tournamentGrid.innerHTML = '<div class="loading">No tournaments found</div>';
-        return;
-    }
-    
     tournaments.forEach(t => {
         const card = document.createElement('div');
         card.className = 'tournament-card';
-        card.dataset.name = t.name.toLowerCase();
-        card.dataset.location = t.location.toLowerCase();
-        
         card.innerHTML = `
             <div class="card-header">
                 <h3>${t.name}</h3>
@@ -112,17 +78,15 @@ function displayTournaments(tournaments) {
                 <a href="tournaments/${t.folder}/participants.html">Participants</a>
             </div>
         `;
-        
         tournamentGrid.appendChild(card);
     });
 }
 
 searchInput.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase().trim();
+    const term = e.target.value.toLowerCase();
     document.querySelectorAll('.tournament-card').forEach(card => {
-        const name = card.dataset.name || '';
-        const location = card.dataset.location || '';
-        card.style.display = (name.includes(term) || location.includes(term)) ? 'flex' : 'none';
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(term) ? 'flex' : 'none';
     });
 });
 
