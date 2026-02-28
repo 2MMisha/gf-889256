@@ -136,103 +136,79 @@
         <p>&copy; 2024 Tournament Hub</p>
     </footer>
 
-    <script>
-        const form = document.getElementById('registrationForm');
-        const messageDiv = document.getElementById('message');
-        const loadingDiv = document.getElementById('loading');
-        const submitBtn = document.getElementById('submitBtn');
+ <script>
+    const form = document.getElementById('registrationForm');
+    const messageDiv = document.getElementById('message');
+    const loadingDiv = document.getElementById('loading');
+    const submitBtn = document.getElementById('submitBtn');
 
-        // Функция для декодирования %20 в пробелы
-        function decodeTournamentName(str) {
-            if (!str) return 'Unknown Tournament';
-            try {
-                // Декодируем URL-кодировку
-                str = decodeURIComponent(str);
-                // Заменяем дефисы на пробелы и делаем заглавными
-                str = str.replace(/-/g, ' ');
-                // Делаем первую букву каждого слова заглавной
-                str = str.replace(/\b\w/g, l => l.toUpperCase());
-                return str;
-            } catch (e) {
-                console.warn('Decode error:', e);
-                return str;
-            }
+    // Функция для декодирования названия турнира
+    function decodeTournamentName(str) {
+        if (!str) return 'Unknown Tournament';
+        try {
+            str = decodeURIComponent(str);
+            str = str.replace(/-/g, ' ');
+            str = str.replace(/\b\w/g, l => l.toUpperCase());
+            return str;
+        } catch (e) {
+            return str;
         }
+    }
 
-        // Получаем название турнира из URL и декодируем его
-        function getTournamentNameFromPath() {
-            const path = window.location.pathname;
-            const matches = path.match(/tournaments\/([^\/]+)/);
-            if (matches && matches[1]) {
-                return decodeTournamentName(matches[1]);
-            }
-            return 'Unknown Tournament';
+    // Получаем название турнира из URL
+    function getTournamentNameFromPath() {
+        const path = window.location.pathname;
+        const matches = path.match(/tournaments\/([^\/]+)/);
+        if (matches && matches[1]) {
+            return decodeTournamentName(matches[1]);
         }
+        return 'Unknown Tournament';
+    }
 
-        // Устанавливаем название турнира
-        const tournamentName = getTournamentNameFromPath();
-        document.getElementById('tournamentName').value = tournamentName;
-        document.getElementById('tournament-title').textContent = tournamentName + ' Registration';
+    const tournamentName = getTournamentNameFromPath();
+    document.getElementById('tournamentName').value = tournamentName;
+    document.getElementById('tournament-title').textContent = tournamentName + ' Registration';
 
-        // ВАЖНО: замените на ваш URL от Google Apps Script
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbw_JqZ94bC3UeIhQec4-kJj6pWD9T-2pO7e4p3ptvRtyhG1HvBzKNMrjQoPBLk9ntqu/exec';
+    // ⚠️⚠️⚠️ ВАЖНО: ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ URL ⚠️⚠️⚠️
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbx13TbORJXqP8nYPav_2N_JVrHMbOpVLAloP6Q_F8tqOBSMqOv46SNn2lEOf0AYT8LS/exec';
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-            // Показываем загрузку
-            loadingDiv.classList.add('show');
-            submitBtn.disabled = true;
-            messageDiv.style.display = 'none';
+        loadingDiv.classList.add('show');
+        submitBtn.disabled = true;
+        messageDiv.style.display = 'none';
 
-            // Создаем данные для отправки
-            const formData = new URLSearchParams();
-            formData.append('timestamp', new Date().toISOString());
-            formData.append('tournamentName', tournamentName); // Отправляем уже декодированное название
-            formData.append('teamName', document.getElementById('teamName').value);
-            formData.append('captainName', document.getElementById('captainName').value);
-            formData.append('email', document.getElementById('email').value);
-            formData.append('phone', document.getElementById('phone').value);
-            formData.append('participants', document.getElementById('participants').value);
+        // Создаем FormData для отправки
+        const formData = new FormData(form);
+        
+        // Добавляем timestamp
+        formData.append('timestamp', new Date().toISOString());
 
-            try {
-                // Отправка
-                const response = await fetch(scriptURL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: formData.toString()
-                });
+        try {
+            // Отправляем через fetch с режимом no-cors
+            await fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors',  // Это важно для Google Scripts
+                body: formData
+            });
 
-                // Пытаемся получить ответ
-                let result;
-                try {
-                    result = await response.json();
-                } catch (e) {
-                    console.log('Response is not JSON:', e);
-                    result = { result: 'success' };
-                }
+            // При no-cors мы не можем проверить ответ, поэтому всегда показываем успех
+            messageDiv.className = 'message success';
+            messageDiv.textContent = 'Registration successful! We will contact you soon.';
+            messageDiv.style.display = 'block';
+            form.reset();
 
-                if (result.result === 'success') {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = 'Registration successful! We will contact you soon.';
-                    messageDiv.style.display = 'block';
-                    form.reset();
-                } else {
-                    throw new Error('Server error');
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                messageDiv.className = 'message error';
-                messageDiv.textContent = 'An error occurred. Please try again later.';
-                messageDiv.style.display = 'block';
-            } finally {
-                loadingDiv.classList.remove('show');
-                submitBtn.disabled = false;
-            }
-        });
-    </script>
+        } catch (error) {
+            console.error('Error:', error);
+            messageDiv.className = 'message error';
+            messageDiv.textContent = 'Error sending data. Please try again.';
+            messageDiv.style.display = 'block';
+        } finally {
+            loadingDiv.classList.remove('show');
+            submitBtn.disabled = false;
+        }
+    });
+</script>
 </body>
 </html>
