@@ -147,7 +147,6 @@
         if (!str) return 'Unknown Tournament';
         try {
             str = decodeURIComponent(str);
-            str = str.replace(/-/g, ' ');
             str = str.replace(/\b\w/g, l => l.toUpperCase());
             return str;
         } catch (e) {
