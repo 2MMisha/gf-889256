@@ -7,7 +7,7 @@ async function loadTournaments() {
         tournamentGrid.innerHTML = '<div class="loading">Loading tournaments...</div>';
         
         // Добавляем timestamp чтобы избежать кэширования
-        const response = await fetch('tournaments/index.json?' + new Date().getTime());
+        const response = await fetch('tournaments/folders.json?' + new Date().getTime());
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -36,7 +36,7 @@ async function loadTournaments() {
         
     } catch (error) {
         console.error('Error loading tournaments:', error);
-        tournamentGrid.innerHTML = '<div class="loading">Error loading tournaments. Please make sure index.json exists.</div>';
+        tournamentGrid.innerHTML = '<div class="loading">Error loading tournaments. Please make sure folders.json exists.</div>';
     }
 }
 
