@@ -30,7 +30,7 @@ jobs:
                 };
               }
             });
-            fs.writeFileSync("tournaments/index.json", JSON.stringify(index, null, 2));
+            fs.writeFileSync("tournaments/folders.json", JSON.stringify(index, null, 2));
           '
           
       - name: Commit changes
