@@ -124,45 +124,62 @@
     </footer>
 
     <script>
-        const form = document.getElementById('registrationForm');
-        const messageDiv = document.getElementById('message');
+    const form = document.getElementById('registrationForm');
+    const messageDiv = document.getElementById('message');
+    
+    // Ваш URL скрипта
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbx3yDrisujezMiFeM_CIVbKYbhYQHw04hzl-5zsmxQ9lcmxnWJS2ZeWtuAqTODnf7F1/exec';
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        // Укажите URL вашего Google Apps Script
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbx3yDrisujezMiFeM_CIVbKYbhYQHw04hzl-5zsmxQ9lcmxnWJS2ZeWtuAqTODnf7F1/exec';
+        // Показываем сообщение о отправке
+        messageDiv.className = 'message';
+        messageDiv.textContent = 'Sending...';
+        messageDiv.style.display = 'block';
         
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Собираем данные формы
+        const formData = new FormData(form);
+        
+        try {
+            // Используем JSONP подход через скрытый iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
             
-            // Собираем данные формы
-            const formData = new URLSearchParams();
-            formData.append('tournament', document.getElementById('tournamentName').value);
-            formData.append('teamName', document.getElementById('teamName').value);
-            formData.append('captainName', document.getElementById('captainName').value);
-            formData.append('email', document.getElementById('email').value);
-            formData.append('phone', document.getElementById('phone').value);
-            formData.append('members', document.getElementById('participants').value);
+            // Создаем форму для отправки в iframe
+            const iframeForm = document.createElement('form');
+            iframeForm.method = 'POST';
+            iframeForm.action = scriptURL;
+            iframeForm.target = iframe.name = 'iframe' + Date.now();
             
-            try {
-                const response = await fetch(scriptURL, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.result === 'success') {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = 'Registration successful! We will contact you soon.';
-                    form.reset();
-                } else {
-                    throw new Error('Server error');
-                }
-            } catch (error) {
-                messageDiv.className = 'message error';
-                messageDiv.textContent = 'An error occurred. Please try again later.';
-                console.error('Error:', error);
+            // Добавляем поля формы
+            for (let pair of formData.entries()) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = pair[0];
+                input.value = pair[1];
+                iframeForm.appendChild(input);
             }
-        });
-    </script>
+            
+            // Добавляем форму в iframe и отправляем
+            iframe.contentDocument.body.appendChild(iframeForm);
+            iframeForm.submit();
+            
+            // Ждем немного и показываем успех
+            setTimeout(() => {
+                messageDiv.className = 'message success';
+                messageDiv.textContent = 'Registration successful! We will contact you soon.';
+                form.reset();
+                document.body.removeChild(iframe);
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            messageDiv.className = 'message error';
+            messageDiv.textContent = 'An error occurred. Please try again later.';
+        }
+    });
+</script>
 </body>
 </html>
