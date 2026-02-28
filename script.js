@@ -7,11 +7,33 @@ const googleAppsScriptUrl = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
 // Загрузка списка турниров из папок
 async function loadTournaments() {
     try {
-
-        // Способ 2: динамическая загрузка (если у вас есть файл со списком)
-         const response = await fetch('tournaments/list.json');
-         const tournaments = await response.json();
-         displayTournaments(tournaments);
+        // Список папок с турнирами (можно добавить новую папку сюда)
+        const tournamentFolders = [
+            'summer-cup-2024',
+            'autumn-championship',
+            'winter-invitational'
+        ];
+        
+        // Загружаем info.json из каждой папки
+        const tournaments = [];
+        
+        for (const folder of tournamentFolders) {
+            try {
+                const response = await fetch(`tournaments/${folder}/info.json`);
+                const info = await response.json();
+                
+                tournaments.push({
+                    folder: folder,
+                    name: info.name,
+                    date: info.date,
+                    location: info.location
+                });
+            } catch (err) {
+                console.warn(`Could not load ${folder}/info.json`, err);
+            }
+        }
+        
+        displayTournaments(tournaments);
         
     } catch (error) {
         console.error('Error loading tournaments:', error);
