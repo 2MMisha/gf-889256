@@ -1,0 +1,47 @@
+name: Debug Tournaments
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # позволяет запускать вручную
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: List all files
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          ls -la
+          
+          echo "=== Tournaments folder ==="
+          ls -la tournaments/
+          
+          echo "=== All folders in tournaments ==="
+          ls -d tournaments/*/
+          
+      - name: Create index.json manually
+        run: |
+          # Создаем простой index.json вручную
+          echo '{' > tournaments/index.json
+          echo '  "test-tournament": {' >> tournaments/index.json
+          echo '    "name": "Test Tournament",' >> tournaments/index.json
+          echo '    "date": "July 2024",' >> tournaments/index.json
+          echo '    "location": "Test Location"' >> tournaments/index.json
+          echo '  }' >> tournaments/index.json
+          echo '}' >> tournaments/index.json
+          
+          echo "=== Created index.json ==="
+          cat tournaments/index.json
+      
+      - name: Commit fix
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add tournaments/index.json
+          git commit -m "Fix index.json" || echo "No changes"
+          git push
