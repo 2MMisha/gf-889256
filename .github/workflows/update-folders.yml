@@ -13,7 +13,7 @@ jobs:
       
       - name: Generate folders list
         run: |
-          ls -d tournaments/*/ | cut -d/ -f2 > tournaments/folders.txt
+          ls -d tournaments/*/ | cut -d/ -f2 > tournaments/folders.json
           node -e '
             const fs = require("fs");
             const folders = fs.readFileSync("tournaments/folders.txt", "utf8").split("\n").filter(Boolean);
