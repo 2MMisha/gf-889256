@@ -168,7 +168,15 @@
             messageDiv.style.display = 'none';
             
             // Создаем FormData объект
-            const formData = new FormData(form);
+            // Создаем объект с данными
+const formData = new URLSearchParams();
+formData.append('timestamp', new Date().toISOString());
+formData.append('tournamentName', document.getElementById('tournamentName').value);
+formData.append('teamName', document.getElementById('teamName').value);
+formData.append('captainName', document.getElementById('captainName').value);
+formData.append('email', document.getElementById('email').value);
+formData.append('phone', document.getElementById('phone').value);
+formData.append('participants', document.getElementById('participants').value);
             
             // Добавляем временную метку
             formData.append('timestamp', new Date().toISOString());
@@ -176,9 +184,12 @@
             try {
                 // Отправляем как FormData (не URLSearchParams)
                 const response = await fetch(scriptURL, {
-                    method: 'POST',
-                    body: formData  // Отправляем как multipart/form-data
-                });
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString() // Важно: используем toString()
+});
                 
                 // Пытаемся получить ответ
                 let result;
