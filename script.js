@@ -1,86 +1,115 @@
 const tournamentGrid = document.getElementById('tournament-grid');
 const searchInput = document.getElementById('search');
 
-// Загрузка всех турниров из index.json
 async function loadTournaments() {
     try {
         tournamentGrid.innerHTML = '<div class="loading">Loading tournaments...</div>';
         
-        // Добавляем timestamp чтобы избежать кэширования
-        const response = await fetch('tournaments/folders.json');
+        // Пробуем загрузить index.json (созданный GitHub Action)
+        const response = await fetch('tournaments/index.json?' + Date.now());
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            console.log('index.json not found, checking folders.json...');
+            
+            // Пробуем загрузить folders.json (список папок)
+            const foldersResponse = await fetch('tournaments/folders.json?' + Date.now());
+            
+            if (foldersResponse.ok) {
+                const folders = await foldersResponse.json();
+                console.log('Folders found:', folders);
+                
+                // Загружаем инфо из каждой папки
+                const tournaments = [];
+                for (const folder of folders) {
+                    try {
+                        const infoResponse = await fetch(`tournaments/${folder}/info.json?` + Date.now());
+                        if (infoResponse.ok) {
+                            const info = await infoResponse.json();
+                            tournaments.push({
+                                folder: folder,
+                                name: info.name || folder,
+                                date: info.date || 'TBA',
+                                location: info.location || 'TBA'
+                            });
+                        } else {
+                            // Если info.json нет, используем название папки
+                            tournaments.push({
+                                folder: folder,
+                                name: folder.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+                                date: 'TBA',
+                                location: 'TBA'
+                            });
+                        }
+                    } catch (e) {
+                        console.warn(`Error loading ${folder}:`, e);
+                    }
+                }
+                
+                if (tournaments.length > 0) {
+                    displayTournaments(tournaments);
+                    return;
+                }
+            }
+            
+            // Если ничего не нашли, показываем тестовый турнир
+            console.log('No tournaments found, showing test data');
+            const testTournaments = [
+                {
+                    folder: 'test-tournament',
+                    name: 'Test Tournament',
+                    date: 'July 2024',
+                    location: 'Test Location'
+                }
+            ];
+            displayTournaments(testTournaments);
+            return;
         }
         
+        // Если index.json существует
         const data = await response.json();
-        console.log('Loaded tournaments:', data);
+        console.log('Index.json loaded:', data);
         
-        // Преобразуем объект в массив
         const tournaments = Object.entries(data).map(([folder, info]) => ({
             folder: folder,
             name: info.name || folder,
             date: info.date || 'TBA',
-            location: info.location || 'TBA',
-            description: info.description || '',
-            maxParticipants: info.maxParticipants,
-            registrationDeadline: info.registrationDeadline
+            location: info.location || 'TBA'
         }));
-        
-        if (tournaments.length === 0) {
-            tournamentGrid.innerHTML = '<div class="loading">No tournaments found.</div>';
-            return;
-        }
         
         displayTournaments(tournaments);
         
     } catch (error) {
-        console.error('Error loading tournaments:', error);
-        tournamentGrid.innerHTML = '<div class="loading">Error loading tournaments. Please make sure folders.json exists.</div>';
+        console.error('Error:', error);
+        tournamentGrid.innerHTML = '<div class="loading">Error loading tournaments. Check console.</div>';
     }
 }
 
-// Отображение карточек турниров
 function displayTournaments(tournaments) {
     tournamentGrid.innerHTML = '';
     
-    tournaments.sort((a, b) => {
-        if (a.date === 'TBA') return 1;
-        if (b.date === 'TBA') return -1;
-        return new Date(b.date) - new Date(a.date);
-    });
+    if (tournaments.length === 0) {
+        tournamentGrid.innerHTML = '<div class="loading">No tournaments found</div>';
+        return;
+    }
     
-    tournaments.forEach(tournament => {
+    tournaments.forEach(t => {
         const card = document.createElement('div');
         card.className = 'tournament-card';
-        card.dataset.name = tournament.name.toLowerCase();
-        card.dataset.location = tournament.location.toLowerCase();
-        card.dataset.folder = tournament.folder;
-        
-        let extraInfo = '';
-        if (tournament.description) {
-            extraInfo += `<p><i>ℹ️</i> ${tournament.description.substring(0, 60)}${tournament.description.length > 60 ? '...' : ''}</p>`;
-        }
-        if (tournament.maxParticipants) {
-            extraInfo += `<p><i>👥</i> Max: ${tournament.maxParticipants} participants</p>`;
-        }
-        if (tournament.registrationDeadline && tournament.registrationDeadline !== 'TBA') {
-            extraInfo += `<p><i>⏰</i> Deadline: ${tournament.registrationDeadline}</p>`;
-        }
+        card.dataset.name = t.name.toLowerCase();
+        card.dataset.location = t.location.toLowerCase();
         
         card.innerHTML = `
             <div class="card-header">
-                <h3>${tournament.name}</h3>
+                <h3>${t.name}</h3>
             </div>
             <div class="card-info">
-                <p><i>📅</i> ${tournament.date}</p>
-                <p><i>📍</i> ${tournament.location}</p>
-                ${extraInfo}
+                <p><i>📅</i> ${t.date}</p>
+                <p><i>📍</i> ${t.location}</p>
             </div>
             <div class="card-actions">
-                <a href="tournaments/${tournament.folder}/register.html" target="_blank">Register</a>
-                <a href="tournaments/${tournament.folder}/results.html" target="_blank">Results</a>
-                <a href="tournaments/${tournament.folder}/participants.html" target="_blank">Participants</a>
+                <a href="tournaments/${t.folder}/register.html">Register</a>
+                <a href="tournaments/${t.folder}/results.html">Results</a>
+                <a href="tournaments/${t.folder}/participants.html">Participants</a>
             </div>
         `;
         
@@ -88,22 +117,13 @@ function displayTournaments(tournaments) {
     });
 }
 
-// Фильтрация карточек при поиске
 searchInput.addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase().trim();
-    const cards = document.querySelectorAll('.tournament-card');
-    
-    cards.forEach(card => {
+    const term = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('.tournament-card').forEach(card => {
         const name = card.dataset.name || '';
         const location = card.dataset.location || '';
-        
-        if (name.includes(searchTerm) || location.includes(searchTerm)) {
-            card.style.display = 'flex';
-        } else {
-            card.style.display = 'none';
-        }
+        card.style.display = (name.includes(term) || location.includes(term)) ? 'flex' : 'none';
     });
 });
 
-// Загрузка турниров при старте
 document.addEventListener('DOMContentLoaded', loadTournaments);
