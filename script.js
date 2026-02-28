@@ -1,22 +1,20 @@
 const tournamentGrid = document.getElementById('tournament-grid');
 const searchInput = document.getElementById('search');
 
-// Укажите URL вашего Google Apps Script веб-приложения
-const googleAppsScriptUrl = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
-
-// Загрузка всех турниров из автоматически сгенерированного index.json
+// Загрузка всех турниров из index.json
 async function loadTournaments() {
     try {
         tournamentGrid.innerHTML = '<div class="loading">Loading tournaments...</div>';
         
-        // Пробуем загрузить сгенерированный index.json
-        const response = await fetch('tournaments/index.json?' + new Date().getTime()); // Добавляем timestamp чтобы избежать кэша
+        // Добавляем timestamp чтобы избежать кэширования
+        const response = await fetch('tournaments/index.json?' + new Date().getTime());
         
         if (!response.ok) {
-            throw new Error('Index file not found');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('Loaded tournaments:', data);
         
         // Преобразуем объект в массив
         const tournaments = Object.entries(data).map(([folder, info]) => ({
@@ -25,8 +23,8 @@ async function loadTournaments() {
             date: info.date || 'TBA',
             location: info.location || 'TBA',
             description: info.description || '',
-            maxParticipants: info.maxParticipants || 'Unlimited',
-            registrationDeadline: info.registrationDeadline || 'TBA'
+            maxParticipants: info.maxParticipants,
+            registrationDeadline: info.registrationDeadline
         }));
         
         if (tournaments.length === 0) {
@@ -38,7 +36,7 @@ async function loadTournaments() {
         
     } catch (error) {
         console.error('Error loading tournaments:', error);
-        tournamentGrid.innerHTML = '<div class="loading">Error loading tournaments. Please refresh the page.</div>';
+        tournamentGrid.innerHTML = '<div class="loading">Error loading tournaments. Please make sure index.json exists.</div>';
     }
 }
 
@@ -46,7 +44,6 @@ async function loadTournaments() {
 function displayTournaments(tournaments) {
     tournamentGrid.innerHTML = '';
     
-    // Сортировка по дате (самые новые сначала)
     tournaments.sort((a, b) => {
         if (a.date === 'TBA') return 1;
         if (b.date === 'TBA') return -1;
@@ -60,10 +57,15 @@ function displayTournaments(tournaments) {
         card.dataset.location = tournament.location.toLowerCase();
         card.dataset.folder = tournament.folder;
         
-        // Формируем описание для карточки
-        let descriptionHtml = '';
+        let extraInfo = '';
         if (tournament.description) {
-            descriptionHtml = `<p><i>ℹ️</i> ${tournament.description.substring(0, 60)}${tournament.description.length > 60 ? '...' : ''}</p>`;
+            extraInfo += `<p><i>ℹ️</i> ${tournament.description.substring(0, 60)}${tournament.description.length > 60 ? '...' : ''}</p>`;
+        }
+        if (tournament.maxParticipants) {
+            extraInfo += `<p><i>👥</i> Max: ${tournament.maxParticipants} participants</p>`;
+        }
+        if (tournament.registrationDeadline && tournament.registrationDeadline !== 'TBA') {
+            extraInfo += `<p><i>⏰</i> Deadline: ${tournament.registrationDeadline}</p>`;
         }
         
         card.innerHTML = `
@@ -73,12 +75,12 @@ function displayTournaments(tournaments) {
             <div class="card-info">
                 <p><i>📅</i> ${tournament.date}</p>
                 <p><i>📍</i> ${tournament.location}</p>
-                ${descriptionHtml}
+                ${extraInfo}
             </div>
             <div class="card-actions">
-                <a href="tournaments/${tournament.folder}/register.html">Register</a>
-                <a href="tournaments/${tournament.folder}/results.html">Results</a>
-                <a href="tournaments/${tournament.folder}/participants.html">Participants</a>
+                <a href="tournaments/${tournament.folder}/register.html" target="_blank">Register</a>
+                <a href="tournaments/${tournament.folder}/results.html" target="_blank">Results</a>
+                <a href="tournaments/${tournament.folder}/participants.html" target="_blank">Participants</a>
             </div>
         `;
         
