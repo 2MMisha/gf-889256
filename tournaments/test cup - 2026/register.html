@@ -78,6 +78,7 @@
             display: none;
             text-align: center;
             margin: 1rem 0;
+            color: #667eea;
         }
         
         .loading.show {
@@ -97,7 +98,7 @@
             
             <div class="loading" id="loading">Sending...</div>
             
-            <form id="registrationForm" onsubmit="return false;">
+            <form id="registrationForm">
                 <div class="form-group">
                     <label for="teamName">Team Name *</label>
                     <input type="text" id="teamName" name="teamName" required>
@@ -123,9 +124,7 @@
                     <input type="number" id="participants" name="participants" min="1" value="5">
                 </div>
                 
-                <!-- Скрытые поля -->
                 <input type="hidden" id="tournamentName" name="tournamentName">
-                <input type="hidden" id="submissionDate" name="submissionDate">
                 
                 <button type="submit" id="submitBtn">Submit Registration</button>
                 <div id="message" class="message"></div>
@@ -143,63 +142,61 @@
         const loadingDiv = document.getElementById('loading');
         const submitBtn = document.getElementById('submitBtn');
         
-        // Определяем название турнира из URL или заголовка
-        function getTournamentName() {
-            // Пробуем получить из заголовка страницы
-            const header = document.querySelector('header h1');
-            if (header) {
-                return header.textContent.replace('📝', '').replace('Registration', '').trim();
+        // Получаем название турнира из URL
+        function getTournamentNameFromPath() {
+            const path = window.location.pathname;
+            const matches = path.match(/tournaments\/([^\/]+)/);
+            if (matches && matches[1]) {
+                return matches[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             }
             return 'Unknown Tournament';
         }
         
-        // Устанавливаем название турнира и дату
-        document.getElementById('tournamentName').value = getTournamentName();
-        document.getElementById('tournament-title').textContent = getTournamentName() + ' Registration';
+        const tournamentName = getTournamentNameFromPath();
+        document.getElementById('tournamentName').value = tournamentName;
+        document.getElementById('tournament-title').textContent = tournamentName + ' Registration';
         
-        // URL вашего Google Apps Script (ЗАМЕНИТЕ НА ВАШ)
+        // ВАЖНО: замените на ваш URL
         const scriptURL = 'https://script.google.com/macros/s/AKfycbw_JqZ94bC3UeIhQec4-kJj6pWD9T-2pO7e4p3ptvRtyhG1HvBzKNMrjQoPBLk9ntqu/exec';
         
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            // Устанавливаем дату отправки
-            document.getElementById('submissionDate').value = new Date().toLocaleString();
             
             // Показываем загрузку
             loadingDiv.classList.add('show');
             submitBtn.disabled = true;
             messageDiv.style.display = 'none';
             
-            // Собираем данные формы
-            const formData = new URLSearchParams();
+            // Создаем FormData объект
+            const formData = new FormData(form);
+            
+            // Добавляем временную метку
             formData.append('timestamp', new Date().toISOString());
-            formData.append('tournament', document.getElementById('tournamentName').value);
-            formData.append('teamName', document.getElementById('teamName').value);
-            formData.append('captainName', document.getElementById('captainName').value);
-            formData.append('email', document.getElementById('email').value);
-            formData.append('phone', document.getElementById('phone').value);
-            formData.append('participants', document.getElementById('participants').value);
             
             try {
-                // Отправляем данные с помощью fetch
+                // Отправляем как FormData (не URLSearchParams)
                 const response = await fetch(scriptURL, {
                     method: 'POST',
-                    mode: 'no-cors', // Это важно! Не ждет ответа от скрипта
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: formData
+                    body: formData  // Отправляем как multipart/form-data
                 });
                 
-                // Так как мы используем no-cors, мы не можем проверить ответ
-                // Просто показываем успех
-                messageDiv.className = 'message success';
-                messageDiv.textContent = 'Registration successful! We will contact you soon.';
-                messageDiv.style.display = 'block';
+                // Пытаемся получить ответ
+                let result;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    console.log('Response is not JSON:', e);
+                    result = { result: 'success' };
+                }
                 
-                // Очищаем форму
-                form.reset();
+                if (result.result === 'success') {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = 'Registration successful! We will contact you soon.';
+                    messageDiv.style.display = 'block';
+                    form.reset();
+                } else {
+                    throw new Error('Server error');
+                }
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -207,7 +204,6 @@
                 messageDiv.textContent = 'An error occurred. Please try again later.';
                 messageDiv.style.display = 'block';
             } finally {
-                // Убираем загрузку
                 loadingDiv.classList.remove('show');
                 submitBtn.disabled = false;
             }
