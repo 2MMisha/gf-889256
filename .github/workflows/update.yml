@@ -1,81 +1,57 @@
-name: Update Tournaments
-
+name: Update tournaments list
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'tournaments/**'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
       
-      - name: Create folders list
+      - name: Generate folders list and index
         run: |
-          # Создаем папку если её нет
-          mkdir -p tournaments
-          
-          # Создаем JSON со списком папок
-          echo "[" > tournaments/folders.json
-          
-          # Проходим по папкам
-          first=true
+          # Создаем массив с названиями папок
+          folders=()
           for d in tournaments/*/ ; do
             if [ -d "$d" ]; then
-              if [ "$first" = true ]; then
-                first=false
-              else
-                echo "," >> tournaments/folders.json
-              fi
               folder=$(basename "$d")
-              echo -n "  \"$folder\"" >> tournaments/folders.json
+              folders+=("$folder")
             fi
           done
           
-          echo "" >> tournaments/folders.json
-          echo "]" >> tournaments/folders.json
+          # Создаем folders.json (список папок)
+          printf '%s\n' "${folders[@]}" | jq -R . | jq -s . > tournaments/folders.json
           
-          # Создаем index.json
+          # Создаем index.json (данные из info.json)
           echo "{" > tournaments/index.json
           first=true
-          for d in tournaments/*/ ; do
-            if [ -d "$d" ]; then
-              if [ "$first" = true ]; then
-                first=false
-              else
-                echo "," >> tournaments/index.json
-              fi
-              
-              folder=$(basename "$d")
+          for folder in "${folders[@]}"; do
+            if [ "$first" = true ]; then
+              first=false
+            else
+              echo "," >> tournaments/index.json
+            fi
+            
+            if [ -f "tournaments/$folder/info.json" ]; then
               echo -n "  \"$folder\": " >> tournaments/index.json
-              
-              if [ -f "tournaments/$folder/info.json" ]; then
-                cat "tournaments/$folder/info.json" >> tournaments/index.json
-              else
-                name=$(echo "$folder" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')
-                echo -n "{ \"name\": \"$name\", \"date\": \"TBA\", \"location\": \"TBA\" }" >> tournaments/index.json
-              fi
+              cat "tournaments/$folder/info.json" >> tournaments/index.json
+            else
+              name=$(echo "$folder" | tr '-' ' ' | sed 's/\b\(.\)/\u\1/g')
+              echo -n "  \"$folder\": { \"name\": \"$name\", \"date\": \"TBA\", \"location\": \"TBA\" }" >> tournaments/index.json
             fi
           done
           echo "" >> tournaments/index.json
           echo "}" >> tournaments/index.json
           
-          # Показываем что создали
-          echo "=== folders.json ==="
-          cat tournaments/folders.json
-          echo "=== index.json ==="
-          cat tournaments/index.json
-      
-      - name: Commit files
+      - name: Commit changes
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           git add tournaments/folders.json tournaments/index.json
           git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update tournaments data"
           git push
