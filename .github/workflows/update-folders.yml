@@ -8,35 +8,50 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       
-      - name: Generate folders list
+      - name: Generate folders list and index
         run: |
-          ls -d tournaments/*/ | cut -d/ -f2 > tournaments/folders.json
-          node -e '
-            const fs = require("fs");
-            const folders = fs.readFileSync("tournaments/folders.json", "utf8").split("\n").filter(Boolean);
-            const index = {};
-            folders.forEach(folder => {
-              try {
-                const info = JSON.parse(fs.readFileSync(`tournaments/${folder}/info.json`, "utf8"));
-                index[folder] = info;
-              } catch (e) {
-                index[folder] = {
-                  name: folder.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
-                  date: "TBA",
-                  location: "TBA"
-                };
-              }
-            });
-            fs.writeFileSync("tournaments/folders.json", JSON.stringify(index, null, 2));
-          '
+          # Создаем массив с названиями папок
+          folders=()
+          for d in tournaments/*/ ; do
+            if [ -d "$d" ]; then
+              folder=$(basename "$d")
+              folders+=("$folder")
+            fi
+          done
+          
+          # Создаем folders.json (список папок)
+          printf '%s\n' "${folders[@]}" | jq -R . | jq -s . > tournaments/folders.json
+          
+          # Создаем index.json (данные из info.json)
+          echo "{" > tournaments/index.json
+          first=true
+          for folder in "${folders[@]}"; do
+            if [ "$first" = true ]; then
+              first=false
+            else
+              echo "," >> tournaments/index.json
+            fi
+            
+            if [ -f "tournaments/$folder/info.json" ]; then
+              echo -n "  \"$folder\": " >> tournaments/index.json
+              cat "tournaments/$folder/info.json" >> tournaments/index.json
+            else
+              name=$(echo "$folder" | tr '-' ' ' | sed 's/\b\(.\)/\u\1/g')
+              echo -n "  \"$folder\": { \"name\": \"$name\", \"date\": \"TBA\", \"location\": \"TBA\" }" >> tournaments/index.json
+            fi
+          done
+          echo "" >> tournaments/index.json
+          echo "}" >> tournaments/index.json
           
       - name: Commit changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add tournaments/index.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update tournaments index"
+          git add tournaments/folders.json tournaments/index.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update tournaments data"
           git push
