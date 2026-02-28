@@ -1,52 +1,32 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Competitions portal | RISTAR.CO</title>
-    <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .card h3 { margin-top: 0; color: #333; }
-        .info { font-size: 0.9em; color: #666; margin-bottom: 15px; }
-        .btn-group { display: flex; gap: 10px; }
-        .btn { flex: 1; padding: 10px; text-align: center; text-decoration: none; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; }
-        .reg { background: #007bff; color: white; }
-        .res { background: #28a745; color: white; }
-        .btn:hover { opacity: 0.8; }
-    </style>
+    <title>Tournament Hub</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Incoming competitions</h1>
-    <div id="tournaments-list" class="grid">
-        </div>
+    <header>
+        <h1>🏆 Tournament Hub</h1>
+        <p>Find your next challenge</p>
+    </header>
 
-    <script>
-        async function loadTournaments() {
-            try {
-                const response = await fetch('tournaments.json');
-                const data = await response.json();
-                const container = document.getElementById('tournaments-list');
+    <main>
+        <section class="filters">
+            <input type="text" id="search" placeholder="Search by name or location...">
+        </section>
 
-                data.forEach(t => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <h3>${t.name}</h3>
-                        <div class="info">📅 ${t.date} | 📍 ${t.location}</div>
-                        <div class="btn-group">
-                            <a href="reg.html?t=${t.folder}" class="btn reg">Registration</a>
-                            <a href="tournaments/${t.folder}/results.html" class="btn res">Results</a>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            } catch (e) {
-                console.error("ERROR at loading :", e);
-            }
-        }
-        loadTournaments();
-    </script>
+        <section class="tournament-grid" id="tournament-grid">
+            <!-- Карточки будут загружены через JavaScript -->
+            <div class="loading">Loading tournaments...</div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Tournament Hub</p>
+    </footer>
+
+    <script src="script.js"></script>
 </body>
 </html>

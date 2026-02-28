@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summer Cup 2024 - Registration</title>
+    <link rel="stylesheet" href="../../style.css">
+    <style>
+        .registration-form {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📝 Summer Cup 2024 - Registration</h1>
+        <a href="../../index.html" style="color: white;">← Back to tournaments</a>
+    </header>
+
+    <main>
+        <div class="registration-form">
+            <h2 style="margin-bottom: 2rem; text-align: center;">Register Your Team</h2>
+            
+            <form id="registrationForm">
+                <div class="form-group">
+                    <label for="teamName">Team Name *</label>
+                    <input type="text" id="teamName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="captainName">Captain's Full Name *</label>
+                    <input type="text" id="captainName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone">
+                </div>
+                
+                <div class="form-group">
+                    <label for="participants">Number of Team Members</label>
+                    <input type="number" id="participants" min="1" value="5">
+                </div>
+                
+                <input type="hidden" id="tournamentName" value="Summer Cup 2024">
+                
+                <button type="submit">Submit Registration</button>
+                <div id="message" class="message"></div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Tournament Hub</p>
+    </footer>
+
+    <script>
+        const form = document.getElementById('registrationForm');
+        const messageDiv = document.getElementById('message');
+        
+        // Укажите URL вашего Google Apps Script
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbx3yDrisujezMiFeM_CIVbKYbhYQHw04hzl-5zsmxQ9lcmxnWJS2ZeWtuAqTODnf7F1/exec';
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Собираем данные формы
+            const formData = new URLSearchParams();
+            formData.append('tournament', document.getElementById('tournamentName').value);
+            formData.append('teamName', document.getElementById('teamName').value);
+            formData.append('captainName', document.getElementById('captainName').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('phone', document.getElementById('phone').value);
+            formData.append('members', document.getElementById('participants').value);
+            
+            try {
+                const response = await fetch(scriptURL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.result === 'success') {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = 'Registration successful! We will contact you soon.';
+                    form.reset();
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (error) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'An error occurred. Please try again later.';
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
