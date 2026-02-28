@@ -1,0 +1,42 @@
+name: Update tournaments list
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tournaments/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Generate folders list
+        run: |
+          ls -d tournaments/*/ | cut -d/ -f2 > tournaments/folders.txt
+          node -e '
+            const fs = require("fs");
+            const folders = fs.readFileSync("tournaments/folders.txt", "utf8").split("\n").filter(Boolean);
+            const index = {};
+            folders.forEach(folder => {
+              try {
+                const info = JSON.parse(fs.readFileSync(`tournaments/${folder}/info.json`, "utf8"));
+                index[folder] = info;
+              } catch (e) {
+                index[folder] = {
+                  name: folder.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
+                  date: "TBA",
+                  location: "TBA"
+                };
+              }
+            });
+            fs.writeFileSync("tournaments/index.json", JSON.stringify(index, null, 2));
+          '
+          
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add tournaments/index.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update tournaments index"
+          git push
