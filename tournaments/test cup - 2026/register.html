@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Summer Cup 2024 - Registration</title>
+    <title>Tournament Registration</title>
     <link rel="stylesheet" href="../../style.css">
     <style>
         .registration-form {
@@ -73,47 +73,61 @@
             color: #721c24;
             display: block;
         }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        
+        .loading.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>📝 Summer Cup 2024 - Registration</h1>
+        <h1>📝 Tournament Registration</h1>
         <a href="../../index.html" style="color: white;">← Back to tournaments</a>
     </header>
 
     <main>
         <div class="registration-form">
-            <h2 style="margin-bottom: 2rem; text-align: center;">Register Your Team</h2>
+            <h2 style="margin-bottom: 2rem; text-align: center;" id="tournament-title">Register</h2>
             
-            <form id="registrationForm">
+            <div class="loading" id="loading">Sending...</div>
+            
+            <form id="registrationForm" onsubmit="return false;">
                 <div class="form-group">
                     <label for="teamName">Team Name *</label>
-                    <input type="text" id="teamName" required>
+                    <input type="text" id="teamName" name="teamName" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="captainName">Captain's Full Name *</label>
-                    <input type="text" id="captainName" required>
+                    <input type="text" id="captainName" name="captainName" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="email">Email *</label>
-                    <input type="email" id="email" required>
+                    <input type="email" id="email" name="email" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="phone">Phone Number</label>
-                    <input type="tel" id="phone">
+                    <input type="tel" id="phone" name="phone">
                 </div>
                 
                 <div class="form-group">
                     <label for="participants">Number of Team Members</label>
-                    <input type="number" id="participants" min="1" value="5">
+                    <input type="number" id="participants" name="participants" min="1" value="5">
                 </div>
                 
-                <input type="hidden" id="tournamentName" value="Summer Cup 2024">
+                <!-- Скрытые поля -->
+                <input type="hidden" id="tournamentName" name="tournamentName">
+                <input type="hidden" id="submissionDate" name="submissionDate">
                 
-                <button type="submit">Submit Registration</button>
+                <button type="submit" id="submitBtn">Submit Registration</button>
                 <div id="message" class="message"></div>
             </form>
         </div>
@@ -124,62 +138,80 @@
     </footer>
 
     <script>
-    const form = document.getElementById('registrationForm');
-    const messageDiv = document.getElementById('message');
-    
-    // Ваш URL скрипта
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbx3yDrisujezMiFeM_CIVbKYbhYQHw04hzl-5zsmxQ9lcmxnWJS2ZeWtuAqTODnf7F1/exec';
-    
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        const form = document.getElementById('registrationForm');
+        const messageDiv = document.getElementById('message');
+        const loadingDiv = document.getElementById('loading');
+        const submitBtn = document.getElementById('submitBtn');
         
-        // Показываем сообщение о отправке
-        messageDiv.className = 'message';
-        messageDiv.textContent = 'Sending...';
-        messageDiv.style.display = 'block';
-        
-        // Собираем данные формы
-        const formData = new FormData(form);
-        
-        try {
-            // Используем JSONP подход через скрытый iframe
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
-            
-            // Создаем форму для отправки в iframe
-            const iframeForm = document.createElement('form');
-            iframeForm.method = 'POST';
-            iframeForm.action = scriptURL;
-            iframeForm.target = iframe.name = 'iframe' + Date.now();
-            
-            // Добавляем поля формы
-            for (let pair of formData.entries()) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = pair[0];
-                input.value = pair[1];
-                iframeForm.appendChild(input);
+        // Определяем название турнира из URL или заголовка
+        function getTournamentName() {
+            // Пробуем получить из заголовка страницы
+            const header = document.querySelector('header h1');
+            if (header) {
+                return header.textContent.replace('📝', '').replace('Registration', '').trim();
             }
+            return 'Unknown Tournament';
+        }
+        
+        // Устанавливаем название турнира и дату
+        document.getElementById('tournamentName').value = getTournamentName();
+        document.getElementById('tournament-title').textContent = getTournamentName() + ' Registration';
+        
+        // URL вашего Google Apps Script (ЗАМЕНИТЕ НА ВАШ)
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbw_JqZ94bC3UeIhQec4-kJj6pWD9T-2pO7e4p3ptvRtyhG1HvBzKNMrjQoPBLk9ntqu/exec';
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            // Добавляем форму в iframe и отправляем
-            iframe.contentDocument.body.appendChild(iframeForm);
-            iframeForm.submit();
+            // Устанавливаем дату отправки
+            document.getElementById('submissionDate').value = new Date().toLocaleString();
             
-            // Ждем немного и показываем успех
-            setTimeout(() => {
+            // Показываем загрузку
+            loadingDiv.classList.add('show');
+            submitBtn.disabled = true;
+            messageDiv.style.display = 'none';
+            
+            // Собираем данные формы
+            const formData = new URLSearchParams();
+            formData.append('timestamp', new Date().toISOString());
+            formData.append('tournament', document.getElementById('tournamentName').value);
+            formData.append('teamName', document.getElementById('teamName').value);
+            formData.append('captainName', document.getElementById('captainName').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('phone', document.getElementById('phone').value);
+            formData.append('participants', document.getElementById('participants').value);
+            
+            try {
+                // Отправляем данные с помощью fetch
+                const response = await fetch(scriptURL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Это важно! Не ждет ответа от скрипта
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData
+                });
+                
+                // Так как мы используем no-cors, мы не можем проверить ответ
+                // Просто показываем успех
                 messageDiv.className = 'message success';
                 messageDiv.textContent = 'Registration successful! We will contact you soon.';
+                messageDiv.style.display = 'block';
+                
+                // Очищаем форму
                 form.reset();
-                document.body.removeChild(iframe);
-            }, 2000);
-            
-        } catch (error) {
-            console.error('Error:', error);
-            messageDiv.className = 'message error';
-            messageDiv.textContent = 'An error occurred. Please try again later.';
-        }
-    });
-</script>
+                
+            } catch (error) {
+                console.error('Error:', error);
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'An error occurred. Please try again later.';
+                messageDiv.style.display = 'block';
+            } finally {
+                // Убираем загрузку
+                loadingDiv.classList.remove('show');
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
