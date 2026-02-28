@@ -1,6 +1,21 @@
 const tournamentGrid = document.getElementById('tournament-grid');
 const searchInput = document.getElementById('search');
 
+// Функция для декодирования строк с %20
+function decodeString(str) {
+    if (!str) return '';
+    try {
+        // Декодируем URL-кодировку (%20 в пробелы и т.д.)
+        str = decodeURIComponent(str);
+        // Заменяем плюсы на пробелы (на всякий случай)
+        str = str.replace(/\+/g, ' ');
+        return str.trim();
+    } catch (e) {
+        console.warn('Decode error:', e);
+        return str;
+    }
+}
+
 async function loadTournaments() {
     try {
         tournamentGrid.innerHTML = '<div class="loading">Loading tournaments...</div>';
@@ -28,17 +43,17 @@ async function loadTournaments() {
             // Если это массив
             tournaments = data.map(item => ({
                 folder: item.folder || 'unknown',
-                name: item.name || 'Unknown',
-                date: item.date || 'TBA',
-                location: item.location || 'TBA'
+                name: decodeString(item.name) || 'Unknown',  // Декодируем
+                date: decodeString(item.date) || 'TBA',       // Декодируем
+                location: decodeString(item.location) || 'TBA' // Декодируем
             }));
         } else if (typeof data === 'object' && data !== null) {
             // Если это объект
             tournaments = Object.entries(data).map(([folder, info]) => ({
                 folder: folder,
-                name: info.name || folder,
-                date: info.date || 'TBA',
-                location: info.location || 'TBA'
+                name: decodeString(info.name) || folder,       // Декодируем
+                date: decodeString(info.date) || 'TBA',        // Декодируем
+                location: decodeString(info.location) || 'TBA'  // Декодируем
             }));
         } else {
             tournamentGrid.innerHTML = `<div class="loading">Error: Unexpected data format - ${typeof data}</div>`;
@@ -64,6 +79,9 @@ function displayTournaments(tournaments) {
     tournaments.forEach(t => {
         const card = document.createElement('div');
         card.className = 'tournament-card';
+        card.dataset.name = t.name.toLowerCase();
+        card.dataset.location = t.location.toLowerCase();
+        
         card.innerHTML = `
             <div class="card-header">
                 <h3>${t.name}</h3>
@@ -83,10 +101,11 @@ function displayTournaments(tournaments) {
 }
 
 searchInput.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase();
+    const term = e.target.value.toLowerCase().trim();
     document.querySelectorAll('.tournament-card').forEach(card => {
-        const text = card.textContent.toLowerCase();
-        card.style.display = text.includes(term) ? 'flex' : 'none';
+        const name = card.dataset.name || '';
+        const location = card.dataset.location || '';
+        card.style.display = (name.includes(term) || location.includes(term)) ? 'flex' : 'none';
     });
 });
 
