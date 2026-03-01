@@ -2,7 +2,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-family: -apple-system, Arimo, sans-serif;
 }
 
 body {
@@ -14,8 +14,8 @@ body {
 }
 
 header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: #0c57ab 100%;
+	text-color: white;
     text-align: center;
     padding: 3rem 1rem;
     margin-bottom: 2rem;
